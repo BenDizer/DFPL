@@ -1,0 +1,62 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\andtu\\source\\repos\\DFPl\\DFPl\\DFPl.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\andtu\\source\\repos\\DFPl\\DFPl\\DFPl.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\andtu\\source\\repos\\DFPl\\DFPl\\DFPl.csproj",
+        "projectName": "DFPl",
+        "projectPath": "C:\\Users\\andtu\\source\\repos\\DFPl\\DFPl\\DFPl.csproj",
+        "packagesPath": "C:\\Users\\andtu\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\andtu\\source\\repos\\DFPl\\DFPl\\obj\\",
+        "projectStyle": "PackageReference",
+        "skipContentFileWrite": true,
+        "fallbackFolders": [
+          "D:\\Program Files(x86)\\Visual studio\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\andtu\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net48"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Users\\andtu\\Documents": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net48": {
+            "projectReferences": {}
+          }
+        }
+      },
+      "frameworks": {
+        "net48": {
+          "dependencies": {
+            "Reloaded.Injector": {
+              "target": "Package",
+              "version": "[1.2.5, )"
+            }
+          }
+        }
+      },
+      "runtimes": {
+        "win": {
+          "#import": []
+        },
+        "win-x64": {
+          "#import": []
+        },
+        "win-x86": {
+          "#import": []
+        }
+      }
+    }
+  }
+}
