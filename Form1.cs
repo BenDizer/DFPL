@@ -14,12 +14,14 @@ using System.Reflection;
 using Reloaded.Injector;
 using IWshRuntimeLibrary;
 using System.IO.Compression;
+using System.Security.AccessControl;
+using System.Security.Principal;
 
 namespace DFPl
 {
     public partial class Form1 : Form
     {
-        string Version = "DFPL 0.1.0";
+        string Version = "DFPL 0.1.1";
         public Form1(string[] Ags)
         {
             bool SL = false;
@@ -119,39 +121,61 @@ namespace DFPl
             if (System.IO.File.Exists(GP + "\\Dwarf Fortress.exe"))
             {
                 string NMLOC = "";
-                switch (listBox1.SelectedItem.ToString())
+                try
                 {
-                    case ("Dwarf Fortress v50.02 - Локализация DFRUS"):
-                        NMLOC = "Dwarf Fortress v50.02__v1_DFRUS.zip";
-                        break;
-                    case ("Dwarf Fortress v50.03 - Локализация DFRUS"):
-                        NMLOC = "Dwarf Fortress v50.03__v1_DFRUS.zip";
-                        break;
+                    switch (listBox1.SelectedItem.ToString())
+                    {
+                        case ("Dwarf Fortress v50.02 - Локализация DFRUS"):
+                            NMLOC = "Dwarf Fortress v50.02__v1_DFRUS.zip";
+                            break;
+                        case ("Dwarf Fortress v50.03 - Локализация DFRUS"):
+                            NMLOC = "Dwarf Fortress v50.03__v1_DFRUS.zip";
+                            break;
+                    }
+                }
+                catch
+                {
+
                 }
                 if (NMLOC != "")
                 {
-                    try
+                    if (System.IO.File.Exists(Environment.CurrentDirectory + @"\loc\" + NMLOC))
                     {
-                        using (ZipArchive archive = ZipFile.OpenRead(Environment.CurrentDirectory + @"\loc\" + NMLOC))
-                        {
-                            foreach (var archiveEntry in archive.Entries)
+                        //if (HasWritePermission(GP))
+                        //{
+
+                            try
                             {
-                                string fullPath = Path.Combine(GP, archiveEntry.FullName);
-                                if (archiveEntry.Name == "")
+                                using (ZipArchive archive = ZipFile.OpenRead(Environment.CurrentDirectory + @"\loc\" + NMLOC))
                                 {
-                                    Directory.CreateDirectory(fullPath);
+                                    foreach (var archiveEntry in archive.Entries)
+                                    {
+                                        string fullPath = Path.Combine(GP, archiveEntry.FullName);
+                                        if (archiveEntry.Name == "")
+                                        {
+                                            Directory.CreateDirectory(fullPath);
+                                        }
+                                        else
+                                        {
+                                            archiveEntry.ExtractToFile(fullPath, true);
+                                        }
+                                    }
                                 }
-                                else
-                                {
-                                    archiveEntry.ExtractToFile(fullPath, true);
-                                }
+                                MessageBox.Show("Локализация установлена!", "Успех!", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             }
-                        }
-                        MessageBox.Show("Локализация установлена!", "Успех!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            catch
+                            {
+                                MessageBox.Show("Не удалось установить локализацию!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            }
+                        //}
+                        //else
+                        //{
+                        //    MessageBox.Show("Папка игры доступна только для чтения!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        //}
                     }
-                    catch
+                    else
                     {
-                        MessageBox.Show("Неудалось установить локализацию!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("Архив локализации не найден!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
                 }
                 else
@@ -164,5 +188,38 @@ namespace DFPl
                 MessageBox.Show("Файл игры не найден!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
+
+        //private static bool HasWritePermission(string FilePath)
+        //{
+        //    bool rez = false;
+        //    DirectoryInfo dir = new DirectoryInfo(FilePath);
+        //    DirectoryInfo[] alldir = dir.GetDirectories();
+        //    WindowsIdentity wi = WindowsIdentity.GetCurrent();
+        //    foreach (DirectoryInfo name in alldir)
+        //    {
+        //        DirectorySecurity ds = name.GetAccessControl(AccessControlSections.Access);
+        //        AuthorizationRuleCollection rules = ds.GetAccessRules(true, true, typeof(SecurityIdentifier));
+        //        foreach (FileSystemAccessRule rl in rules)
+        //        {
+        //            SecurityIdentifier sid = (SecurityIdentifier)rl.IdentityReference;
+        //            if (((rl.FileSystemRights & FileSystemRights.WriteData) == FileSystemRights.WriteData))
+        //            {
+        //                if ((sid.IsAccountSid() && wi.User == sid) ||
+        //                    (!sid.IsAccountSid() && wi.Groups.Contains(sid)))
+        //                {
+        //                    if (rl.AccessControlType == AccessControlType.Allow)
+        //                    {
+        //                        rez = true;
+        //                    }
+        //                    else
+        //                    {
+        //                        rez = false;
+        //                    }
+        //                }
+        //            }
+        //        }
+        //    }
+        //    return rez;
+        //}
     }
 }
