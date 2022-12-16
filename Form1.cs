@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows.Forms;
 using IWshRuntimeLibrary;
+using NLog;
 using Reloaded.Injector;
 
 namespace DFPl
@@ -22,8 +23,13 @@ namespace DFPl
         private readonly string[] _args;
         private string _gamePath;
 
+        //Logger
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+        
         public Form1(string[] args)
         {
+            Logger.Info("App started with args: " + String.Join(", ", args));
+
             _args = args;
             InitializeComponent();
             textBox2.Text = DFPl.Properties.Settings.Default[GamePathSetting].ToString();
@@ -46,7 +52,7 @@ namespace DFPl
             }
             catch (Exception ex)
             {
-                LogError("Failed to create quiet start shortcut", ex);
+                Logger.Error("Failed to create quiet start shortcut", ex);
                 MessageBox.Show("Failed to create quiet start shortcut!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
@@ -55,6 +61,9 @@ namespace DFPl
         {
             folderBrowserDialog1.ShowDialog();
             textBox2.Text = folderBrowserDialog1.SelectedPath;
+            DFPl.Properties.Settings.Default[GamePathSetting] = folderBrowserDialog1.SelectedPath;
+            DFPl.Properties.Settings.Default.Save();
+            Logger.Info("New path set and saved. Path: " + DFPl.Properties.Settings.Default[GamePathSetting].ToString());
         }
         
         private void button4_Click(object sender, EventArgs e)
@@ -67,9 +76,12 @@ namespace DFPl
         {
             try
             {
+                Logger.Info("Starting Game. Path: " + DFPl.Properties.Settings.Default[GamePathSetting].ToString());
+
                 _gamePath = DFPl.Properties.Settings.Default[GamePathSetting].ToString();
                 if (!CheckGameFilesExist())
                 {
+                    Logger.Error("Required game files not found!");
                     MessageBox.Show("Required game files not found!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
@@ -85,19 +97,21 @@ namespace DFPl
                 int procId = df.Id;
                 try
                 {
+                    Logger.Info("Injecting Game");
+
                     Injector injector = new Injector(df);
                     injector.Inject(Path.Combine(_gamePath, TranslationDll));
                     injector.Dispose();
                 }
                 catch (Exception ex)
                 {
-                    LogError("Failed to apply mods", ex);
+                    Logger.Error("Failed to apply mods", ex);
                     MessageBox.Show("Failed to apply mods!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
             catch (Exception ex)
             {
-                LogError("Failed to start game", ex);
+                Logger.Error("Failed to start game", ex);
                 MessageBox.Show("Failed to start game!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
@@ -110,28 +124,31 @@ namespace DFPl
 
         private void CreateQuietStartShortcut()
         {
+            Logger.Info("Creating shortcat");
+
             object shDesktop = (object)"Desktop";
             WshShell shell = new WshShell();
             string shortcutAddress = (string)shell.SpecialFolders.Item(ref shDesktop) + $@"\{ShortcutName}";
+
+            Logger.Info("Shortcat address: " + shortcutAddress);
+
             IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(shortcutAddress);
             shortcut.TargetPath = Environment.CurrentDirectory + @"\DFPL.exe";
             shortcut.Arguments = QuietStartArg;
             shortcut.IconLocation = Path.Combine(Environment.CurrentDirectory, ShortcutIcon);
             shortcut.Save();
+
+            Logger.Info("Creating shortcat Done");
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
             if (Array.IndexOf(_args, QuietStartArg) > -1)
             {
+
                 StartGame();
                 Application.Exit();
             }
-        }
-
-        private static void LogError(string message, Exception ex)
-        {
-            // TODO: Implement error logging using a logging library such as log4net
         }
     }
 }
