@@ -1,225 +1,137 @@
 ﻿using System;
-using System.IO;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Reflection;
-using Reloaded.Injector;
+using System.IO;
+using System.Windows.Forms;
 using IWshRuntimeLibrary;
-using System.IO.Compression;
-using System.Security.AccessControl;
-using System.Security.Principal;
+using Reloaded.Injector;
 
 namespace DFPl
 {
     public partial class Form1 : Form
     {
-        string Version = "DFPL 0.1.1";
-        public Form1(string[] Ags)
-        {
-            bool SL = false;
-            foreach (string A in Ags)
-            {
-                if (A == "-quiet_start")
-                SL = true;
-            }
-            if (SL)
-            {
-                DFSTART();
-                Application.Exit();
-            }
-            else
-            {
-                InitializeComponent();
-            }
-            textBox2.Text = DFPl.Properties.Settings.Default["Gamepath"].ToString();
-            this.Text = Version;
+        // Constants
+        private const string Version = "DFPL 0.1.1";
+        private const string GameExe = "Dwarf Fortress.exe";
+        private const string TranslationDll = "df-steam-translate-hook.dll";
+        private const string QuietStartArg = "-quiet_start";
+        private const string GamePathSetting = "Gamepath";
+        private const string ShortcutName = "Запуск DF.lnk";
+        private const string ShortcutIcon = "ico\\DFPLQS.ico";
 
+        // Fields
+        private readonly string[] _args;
+        private string _gamePath;
+
+        public Form1(string[] args)
+        {
+            _args = args;
+            InitializeComponent();
+            textBox2.Text = DFPl.Properties.Settings.Default[GamePathSetting].ToString();
+            this.Text = Version;
         }
 
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            DFPl.Properties.Settings.Default[GamePathSetting] = textBox2.Text;
+            DFPl.Properties.Settings.Default.Save();
+            StartGame();
+        }
+        
+        private void button2_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                CreateQuietStartShortcut();
+            }
+            catch (Exception ex)
+            {
+                LogError("Failed to create quiet start shortcut", ex);
+                MessageBox.Show("Failed to create quiet start shortcut!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+        
         private void button3_Click(object sender, EventArgs e)
         {
             folderBrowserDialog1.ShowDialog();
             textBox2.Text = folderBrowserDialog1.SelectedPath;
         }
-
-        private void button1_Click(object sender, EventArgs e)
+        
+        private void button4_Click(object sender, EventArgs e)
         {
-            DFPl.Properties.Settings.Default["Gamepath"] = textBox2.Text;
+            DFPl.Properties.Settings.Default[GamePathSetting] = textBox2.Text;
             DFPl.Properties.Settings.Default.Save();
-            DFSTART();
         }
-        private void DFSTART()
+        
+        private void StartGame()
         {
-            string GP = DFPl.Properties.Settings.Default["Gamepath"].ToString();
-            if (System.IO.File.Exists(GP + "\\Dwarf Fortress.exe"))
+            try
             {
-                String strDLLName = GP + "\\df-steam-translate-hook.dll";
-                if (System.IO.File.Exists(GP + "\\df-steam-translate-hook.dll"))
+                _gamePath = DFPl.Properties.Settings.Default[GamePathSetting].ToString();
+                if (!CheckGameFilesExist())
                 {
-                    try
-                    {
-                        ProcessStartInfo startInfo = new ProcessStartInfo();
-                        startInfo.FileName = GP + "\\Dwarf Fortress.exe";
-                        startInfo.CreateNoWindow = false;
-                        startInfo.UseShellExecute = true;
-                        startInfo.WorkingDirectory = GP;
-                        Process DF = Process.Start(startInfo);
-                        int ProcID = DF.Id;
-                        try
-                        {
-                            Injector injector = new Injector(DF);
-                            injector.Inject(strDLLName);
-                            injector.Dispose();
-                        }
-                        catch
-                        {
-                            MessageBox.Show("Неудалось применить моды!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        }
-                    }
-                    catch
-                    {
-                        MessageBox.Show("Не удалось запустить игру!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-
+                    MessageBox.Show("Required game files not found!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
                 }
-                else
+
+                ProcessStartInfo startInfo = new ProcessStartInfo
                 {
-                    MessageBox.Show("Перевод не найден!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    FileName = Path.Combine(_gamePath, GameExe),
+                    CreateNoWindow = false,
+                    UseShellExecute = true,
+                    WorkingDirectory = _gamePath
+                };
+                Process df = Process.Start(startInfo);
+                int procId = df.Id;
+                try
+                {
+                    Injector injector = new Injector(df);
+                    injector.Inject(Path.Combine(_gamePath, TranslationDll));
+                    injector.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    LogError("Failed to apply mods", ex);
+                    MessageBox.Show("Failed to apply mods!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
-            else
+            catch (Exception ex)
             {
-                MessageBox.Show("Файл игры не найден!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                LogError("Failed to start game", ex);
+                MessageBox.Show("Failed to start game!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
-        private void button2_Click(object sender, EventArgs e)
+        private bool CheckGameFilesExist()
+        {
+            return System.IO.File.Exists(Path.Combine(_gamePath, GameExe)) &&
+                   System.IO.File.Exists(Path.Combine(_gamePath, TranslationDll));
+        }
+
+        private void CreateQuietStartShortcut()
         {
             object shDesktop = (object)"Desktop";
             WshShell shell = new WshShell();
-            string shortcutAddress = (string)shell.SpecialFolders.Item(ref shDesktop) + @"\Запуск DF.lnk";
+            string shortcutAddress = (string)shell.SpecialFolders.Item(ref shDesktop) + $@"\{ShortcutName}";
             IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(shortcutAddress);
             shortcut.TargetPath = Environment.CurrentDirectory + @"\DFPL.exe";
-            shortcut.Arguments = "-quiet_start";
-            shortcut.IconLocation = Environment.CurrentDirectory + @"\ico\DFPLQS.ico";
+            shortcut.Arguments = QuietStartArg;
+            shortcut.IconLocation = Path.Combine(Environment.CurrentDirectory, ShortcutIcon);
             shortcut.Save();
         }
 
-        private void button4_Click(object sender, EventArgs e)
+        private void Form1_Load(object sender, EventArgs e)
         {
-            DFPl.Properties.Settings.Default["Gamepath"] = textBox2.Text;
-            DFPl.Properties.Settings.Default.Save();
-            string GP = DFPl.Properties.Settings.Default["Gamepath"].ToString();
-            if (System.IO.File.Exists(GP + "\\Dwarf Fortress.exe"))
+            if (Array.IndexOf(_args, QuietStartArg) > -1)
             {
-                string NMLOC = "";
-                try
-                {
-                    switch (listBox1.SelectedItem.ToString())
-                    {
-                        case ("Dwarf Fortress v50.02 - Локализация DFRUS"):
-                            NMLOC = "Dwarf Fortress v50.02__v1_DFRUS.zip";
-                            break;
-                        case ("Dwarf Fortress v50.03 - Локализация DFRUS"):
-                            NMLOC = "Dwarf Fortress v50.03__v1_DFRUS.zip";
-                            break;
-                    }
-                }
-                catch
-                {
-
-                }
-                if (NMLOC != "")
-                {
-                    if (System.IO.File.Exists(Environment.CurrentDirectory + @"\loc\" + NMLOC))
-                    {
-                        //if (HasWritePermission(GP))
-                        //{
-
-                            try
-                            {
-                                using (ZipArchive archive = ZipFile.OpenRead(Environment.CurrentDirectory + @"\loc\" + NMLOC))
-                                {
-                                    foreach (var archiveEntry in archive.Entries)
-                                    {
-                                        string fullPath = Path.Combine(GP, archiveEntry.FullName);
-                                        if (archiveEntry.Name == "")
-                                        {
-                                            Directory.CreateDirectory(fullPath);
-                                        }
-                                        else
-                                        {
-                                            archiveEntry.ExtractToFile(fullPath, true);
-                                        }
-                                    }
-                                }
-                                MessageBox.Show("Локализация установлена!", "Успех!", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            }
-                            catch
-                            {
-                                MessageBox.Show("Не удалось установить локализацию!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                            }
-                        //}
-                        //else
-                        //{
-                        //    MessageBox.Show("Папка игры доступна только для чтения!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        //}
-                    }
-                    else
-                    {
-                        MessageBox.Show("Архив локализации не найден!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                }
-                else
-                {
-                    MessageBox.Show("Необходимо выбрать версию!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-            }
-            else
-            {
-                MessageBox.Show("Файл игры не найден!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                StartGame();
+                Application.Exit();
             }
         }
 
-        //private static bool HasWritePermission(string FilePath)
-        //{
-        //    bool rez = false;
-        //    DirectoryInfo dir = new DirectoryInfo(FilePath);
-        //    DirectoryInfo[] alldir = dir.GetDirectories();
-        //    WindowsIdentity wi = WindowsIdentity.GetCurrent();
-        //    foreach (DirectoryInfo name in alldir)
-        //    {
-        //        DirectorySecurity ds = name.GetAccessControl(AccessControlSections.Access);
-        //        AuthorizationRuleCollection rules = ds.GetAccessRules(true, true, typeof(SecurityIdentifier));
-        //        foreach (FileSystemAccessRule rl in rules)
-        //        {
-        //            SecurityIdentifier sid = (SecurityIdentifier)rl.IdentityReference;
-        //            if (((rl.FileSystemRights & FileSystemRights.WriteData) == FileSystemRights.WriteData))
-        //            {
-        //                if ((sid.IsAccountSid() && wi.User == sid) ||
-        //                    (!sid.IsAccountSid() && wi.Groups.Contains(sid)))
-        //                {
-        //                    if (rl.AccessControlType == AccessControlType.Allow)
-        //                    {
-        //                        rez = true;
-        //                    }
-        //                    else
-        //                    {
-        //                        rez = false;
-        //                    }
-        //                }
-        //            }
-        //        }
-        //    }
-        //    return rez;
-        //}
+        private static void LogError(string message, Exception ex)
+        {
+            // TODO: Implement error logging using a logging library such as log4net
+        }
     }
 }
