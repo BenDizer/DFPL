@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32519.379
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DFPl", "DFPl.csproj", "{F45DC1BE-8065-435C-85FC-0E6BD4B76424}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+		Share|Any CPU = Share|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F45DC1BE-8065-435C-85FC-0E6BD4B76424}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F45DC1BE-8065-435C-85FC-0E6BD4B76424}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F45DC1BE-8065-435C-85FC-0E6BD4B76424}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F45DC1BE-8065-435C-85FC-0E6BD4B76424}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F45DC1BE-8065-435C-85FC-0E6BD4B76424}.Share|Any CPU.ActiveCfg = Share|Any CPU
+		{F45DC1BE-8065-435C-85FC-0E6BD4B76424}.Share|Any CPU.Build.0 = Share|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7E103C92-EA0E-4625-9188-6D17B0AD5E4B}
+	EndGlobalSection
+EndGlobal
