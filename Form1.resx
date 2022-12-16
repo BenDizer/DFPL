@@ -271,10 +271,10 @@
     <value>1</value>
   </data>
   <data name="listBox1.Items" xml:space="preserve">
-    <value>Dwarf Fortress v50.02 - Локализация DFRUS</value>
+    <value>Dwarf Fortress v50.02 - DFRUS</value>
   </data>
   <data name="listBox1.Items1" xml:space="preserve">
-    <value>Dwarf Fortress v50.03 - Локализация DFRUS</value>
+    <value>Dwarf Fortress v50.03 - DFRUS</value>
   </data>
   <data name="listBox1.Location" type="System.Drawing.Point, System.Drawing">
     <value>42, 83</value>

@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Windows.Forms;
+using DFPl.Models;
 using IWshRuntimeLibrary;
 using NLog;
 using Reloaded.Injector;
@@ -10,40 +12,45 @@ namespace DFPl
 {
     public partial class Form1 : Form
     {
-        // Constants
+       // Constants
         private const string Version = "DFPL 0.1.1";
-        private const string GameExe = "Dwarf Fortress.exe";
-        private const string TranslationDll = "df-steam-translate-hook.dll";
-        private const string QuietStartArg = "-quiet_start";
         private const string GamePathSetting = "Gamepath";
         private const string ShortcutName = "Запуск DF.lnk";
         private const string ShortcutIcon = "ico\\DFPLQS.ico";
-
+        private const string QuietStartArg = "-quiet_start";
+        
         // Fields
         private readonly string[] _args;
-        private string _gamePath;
+        private readonly Logger _logger;
 
-        //Logger
-        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-        
         public Form1(string[] args)
         {
-            Logger.Info("App started with args: " + String.Join(", ", args));
-
             _args = args;
+            _logger = LogManager.GetCurrentClassLogger();
+            _logger.Info("App started with args: " + String.Join(", ", args));
+
             InitializeComponent();
             textBox2.Text = DFPl.Properties.Settings.Default[GamePathSetting].ToString();
             this.Text = Version;
         }
 
-
         private void button1_Click(object sender, EventArgs e)
         {
             DFPl.Properties.Settings.Default[GamePathSetting] = textBox2.Text;
             DFPl.Properties.Settings.Default.Save();
-            StartGame();
+
+            try
+            {
+                var game = new Game(DFPl.Properties.Settings.Default[GamePathSetting].ToString(), _logger);
+                game.Start();
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("Failed to start game", ex);
+                MessageBox.Show("Failed to start game!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
-        
+
         private void button2_Click(object sender, EventArgs e)
         {
             try
@@ -52,102 +59,132 @@ namespace DFPl
             }
             catch (Exception ex)
             {
-                Logger.Error("Failed to create quiet start shortcut", ex);
+                _logger.Error("Failed to create quiet start shortcut", ex);
                 MessageBox.Show("Failed to create quiet start shortcut!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
-        
+
         private void button3_Click(object sender, EventArgs e)
         {
             folderBrowserDialog1.ShowDialog();
             textBox2.Text = folderBrowserDialog1.SelectedPath;
             DFPl.Properties.Settings.Default[GamePathSetting] = folderBrowserDialog1.SelectedPath;
             DFPl.Properties.Settings.Default.Save();
-            Logger.Info("New path set and saved. Path: " + DFPl.Properties.Settings.Default[GamePathSetting].ToString());
+            _logger.Info("New path set and saved. Path: " + DFPl.Properties.Settings.Default[GamePathSetting].ToString());
         }
-        
+
+
+        // TODO
+        // 1. Download localization from the server
+        // 2. Request avalible versions from the server
         private void button4_Click(object sender, EventArgs e)
         {
-            DFPl.Properties.Settings.Default[GamePathSetting] = textBox2.Text;
+            string gamePath = textBox2.Text;
+            DFPl.Properties.Settings.Default["Gamepath"] = gamePath;
             DFPl.Properties.Settings.Default.Save();
-        }
-        
-        private void StartGame()
-        {
+
+            if (!System.IO.File.Exists(gamePath + "\\Dwarf Fortress.exe"))
+            {
+                _logger.Error("Game file not found at path: " + gamePath);
+                MessageBox.Show("Game file not found at path!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            string localizationFile = "";
+
+            switch (listBox1.SelectedItem?.ToString())
+            {
+                case ("Dwarf Fortress v50.02 - DFRUS"):
+                    localizationFile = "Dwarf Fortress v50.02__v1_DFRUS.zip";
+                    break;
+                case ("Dwarf Fortress v50.03 - DFRUS"):
+                    localizationFile = "Dwarf Fortress v50.03__v1_DFRUS.zip";
+                    break;
+            }
+
+            if (localizationFile == "")
+            {
+                _logger.Error("No localization file selected");
+                MessageBox.Show("No localization file selected!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            string localizationArchivePath = Environment.CurrentDirectory + @"\loc\" + localizationFile;
+            if (!System.IO.File.Exists(localizationArchivePath))
+            {
+                _logger.Error("Localization archive not found at path: " + localizationArchivePath);
+                MessageBox.Show("Localization archive not found!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
             try
             {
-                Logger.Info("Starting Game. Path: " + DFPl.Properties.Settings.Default[GamePathSetting].ToString());
-
-                _gamePath = DFPl.Properties.Settings.Default[GamePathSetting].ToString();
-                if (!CheckGameFilesExist())
+                using (ZipArchive archive = ZipFile.OpenRead(localizationArchivePath))
                 {
-                    Logger.Error("Required game files not found!");
-                    MessageBox.Show("Required game files not found!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
+                    foreach (var archiveEntry in archive.Entries)
+                    {
+                        string fullPath = Path.Combine(gamePath, archiveEntry.FullName);
+                        if (archiveEntry.Name == "")
+                        {
+                            Directory.CreateDirectory(fullPath);
+                        }
+                        else
+                        {
+                            archiveEntry.ExtractToFile(fullPath, true);
+                        }
+                    }
                 }
 
-                ProcessStartInfo startInfo = new ProcessStartInfo
-                {
-                    FileName = Path.Combine(_gamePath, GameExe),
-                    CreateNoWindow = false,
-                    UseShellExecute = true,
-                    WorkingDirectory = _gamePath
-                };
-                Process df = Process.Start(startInfo);
-                int procId = df.Id;
-                try
-                {
-                    Logger.Info("Injecting Game");
-
-                    Injector injector = new Injector(df);
-                    injector.Inject(Path.Combine(_gamePath, TranslationDll));
-                    injector.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error("Failed to apply mods", ex);
-                    MessageBox.Show("Failed to apply mods!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
+                _logger.Info("Localization installed at path: " + gamePath);
+                MessageBox.Show("Localization installed!", "Done!", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                Logger.Error("Failed to start game", ex);
-                MessageBox.Show("Failed to start game!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                _logger.Error("Error installing localization", ex);
+                MessageBox.Show("Error installing localization!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
-
-        private bool CheckGameFilesExist()
-        {
-            return System.IO.File.Exists(Path.Combine(_gamePath, GameExe)) &&
-                   System.IO.File.Exists(Path.Combine(_gamePath, TranslationDll));
-        }
-
+        
         private void CreateQuietStartShortcut()
         {
-            Logger.Info("Creating shortcat");
+            string appPath = Application.StartupPath;
+            string shortcutPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), ShortcutName);
+            string exePath = Path.Combine(appPath, "DFPl.exe");
 
-            object shDesktop = (object)"Desktop";
+            if (System.IO.File.Exists(shortcutPath))
+            {
+                System.IO.File.Delete(shortcutPath);
+            }
+
             WshShell shell = new WshShell();
-            string shortcutAddress = (string)shell.SpecialFolders.Item(ref shDesktop) + $@"\{ShortcutName}";
-
-            Logger.Info("Shortcat address: " + shortcutAddress);
-
-            IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(shortcutAddress);
-            shortcut.TargetPath = Environment.CurrentDirectory + @"\DFPL.exe";
+            IWshShortcut shortcut = (IWshShortcut)shell.CreateShortcut(shortcutPath);
+            shortcut.Description = "DFPl Quiet Start";
+            shortcut.TargetPath = exePath;
+            shortcut.WorkingDirectory = appPath;
             shortcut.Arguments = QuietStartArg;
-            shortcut.IconLocation = Path.Combine(Environment.CurrentDirectory, ShortcutIcon);
+            shortcut.IconLocation = Path.Combine(appPath, ShortcutIcon);
             shortcut.Save();
-
-            Logger.Info("Creating shortcat Done");
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            if (Array.IndexOf(_args, QuietStartArg) > -1)
+            if (_args.Length > 0 && _args[0] == QuietStartArg)
             {
+                DFPl.Properties.Settings.Default[GamePathSetting] = textBox2.Text;
+                DFPl.Properties.Settings.Default.Save();
 
-                StartGame();
-                Application.Exit();
+                try
+                {
+                    var game = new Game(DFPl.Properties.Settings.Default[GamePathSetting].ToString(), _logger);
+                    game.Start();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error("Failed to start game", ex);
+                    MessageBox.Show("Failed to start game!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+
+                Close();
             }
         }
     }
