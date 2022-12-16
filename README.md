@@ -1,7 +1,7 @@
 # DFPL 
 
 #### Проект лаунчера для игры Dwarf Fortress Steam c поддержкой модификаций
-
+#### Сайт https://vk.com/dwarffortresspluslauncher
 
 # Поддержать проект
 
