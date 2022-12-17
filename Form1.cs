@@ -21,7 +21,7 @@ namespace DFPl
 {
     public partial class Form1 : Form
     {
-        string Version = "DFPL 0.1.1";
+        string Version = "DFPL 0.1.2";
         public Form1(string[] Ags)
         {
             bool SL = false;
@@ -40,6 +40,14 @@ namespace DFPl
                 InitializeComponent();
             }
             textBox2.Text = DFPl.Properties.Settings.Default["Gamepath"].ToString();
+            if (DFPl.Properties.Settings.Default["DF_VER"].ToString() != "")
+            {
+                label1.Text = "@Версия игры: " + DFPl.Properties.Settings.Default["DF_VER"].ToString();
+            }
+            else
+            {
+                label1.Text = "@Версия игры неизвестна";
+            }
             this.Text = Version;
 
         }
@@ -48,6 +56,26 @@ namespace DFPl
         {
             folderBrowserDialog1.ShowDialog();
             textBox2.Text = folderBrowserDialog1.SelectedPath;
+            string GP = DFPl.Properties.Settings.Default["Gamepath"].ToString();
+            if (System.IO.File.Exists(GP + "\\Dwarf Fortress.exe"))
+            {
+                var secondLine = System.IO.File.ReadLines(GP + @"\data\vanilla\vanilla_creatures_graphics\info.txt");
+                foreach (string lines in secondLine)
+                {
+                    string[] plines = lines.Split(':');
+                    if (plines[0] == "[DISPLAYED_VERSION")
+                    {
+                        label1.Text = "@Версия игры: " + plines[1].Split(']')[0];
+                        DFPl.Properties.Settings.Default["DF_VER"] = plines[1].Split(']')[0];
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("Файл игры не найден!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                DFPl.Properties.Settings.Default["DF_VER"] = "";
+                label1.Text = "@Версия игры неизвестна";
+            }
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -73,6 +101,7 @@ namespace DFPl
                         startInfo.WorkingDirectory = GP;
                         Process DF = Process.Start(startInfo);
                         int ProcID = DF.Id;
+                        Thread.Sleep(1000);
                         try
                         {
                             Injector injector = new Injector(DF);
@@ -125,11 +154,14 @@ namespace DFPl
                 {
                     switch (listBox1.SelectedItem.ToString())
                     {
-                        case ("Dwarf Fortress v50.02 - Локализация DFRUS"):
-                            NMLOC = "Dwarf Fortress v50.02__v1_DFRUS.zip";
+                        case ("Dwarf Fortress v50.02 - Локализация DFRUS v0.1"):
+                            NMLOC = "Dwarf Fortress v50.02__v0.1_DFRUS.zip";
                             break;
-                        case ("Dwarf Fortress v50.03 - Локализация DFRUS"):
-                            NMLOC = "Dwarf Fortress v50.03__v1_DFRUS.zip";
+                        case ("Dwarf Fortress v50.03 - Локализация DFRUS v0.1"):
+                            NMLOC = "Dwarf Fortress v50.03__v0.1_DFRUS.zip";
+                            break;
+                        case ("Dwarf Fortress v50.03 - Локализация DFRUS v0.2"):
+                            NMLOC = "Dwarf Fortress v50.03__v0.2_DFRUS.zip";
                             break;
                     }
                 }
@@ -187,6 +219,11 @@ namespace DFPl
             {
                 MessageBox.Show("Файл игры не найден!", "Ошибка!", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
         }
 
         //private static bool HasWritePermission(string FilePath)
