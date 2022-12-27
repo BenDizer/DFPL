@@ -46,5 +46,17 @@ namespace DFPl.Properties {
                 this["DLLpath"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string DF_VER {
+            get {
+                return ((string)(this["DF_VER"]));
+            }
+            set {
+                this["DF_VER"] = value;
+            }
+        }
     }
 }

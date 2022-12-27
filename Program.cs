@@ -15,7 +15,12 @@ namespace DFPl
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1(Ags));
+            string Agss = "";
+            for(int i = 0; i < Ags.Length; i++)
+            {
+                Agss += Ags[i] + "|";
+            }
+            Application.Run(new Form1(Agss));
         }
     }
 }
